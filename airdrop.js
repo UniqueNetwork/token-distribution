@@ -1,15 +1,17 @@
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 const config = require('./config');
 const fs = require('fs');
+const delay = require('delay');
 var BigNumber = require('bignumber.js');
 BigNumber.config({ DECIMAL_PLACES: 18, ROUNDING_MODE: BigNumber.ROUND_DOWN, decimalSeparator: '.' });
 
-const TEST = true;
+const TEST = false;
 const seed = config.seed;
 const logFile = "./2021-12/qtz_send_log.txt";
 const csvLogFile = "./2021-12/qtz_send_log.csv";
 const decimals = new BigNumber(1e18);
 let keyring;
+const startAddress = 9036;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Management audit
@@ -74,9 +76,9 @@ function sendTransactionAsync(sender, transaction) {
     return new Promise(async (resolve, reject) => {
       try {
         // 10 blocks with no result => timeout and keep going
-        setTimeout(() => { 
+        const timeoutID = setTimeout(() => { 
           log(`Transaction timeout\n`);
-          resolve(null);
+          reject(null);
         }, 10 * 12 * 1000);
 
         let unsub = await transaction.signAndSend(sender, ({ events = [], status }) => {
@@ -89,6 +91,7 @@ function sendTransactionAsync(sender, transaction) {
             log(`OK in block ${blockHash}\n`);
             resolve(blockHash);
             unsub();
+            clearTimeout(timeoutID);
           } else if (transactionStatus === "NotReady") {
           } else if (transactionStatus === "Retracted") {
             log(`Retracted ... `);
@@ -97,6 +100,7 @@ function sendTransactionAsync(sender, transaction) {
             log(`Tx failed. Status: ${status}\n`);
             resolve(null);
             unsub();
+            clearTimeout(timeoutID);
           }
         });
       } catch (e) {
@@ -113,10 +117,17 @@ async function sendVestedFunds(i, api, sender, recipient, amount, lock, vest) {
   const amount2StrHuman = (new BigNumber(amount-1)).toFixed();
   const amountPerPeriodStr = (new BigNumber(amount-1)).times(decimals).div(vest).integerValue().toString();
 
+  // Log for audit records
+  const recipientKusama = keyring.encodeAddress(keyring.decodeAddress(recipient), 2);
+  fs.appendFileSync(csvLogFile, `${recipientKusama},${recipient},${amount},${amount1StrHuman},${relay_block_tge},${lock},${vest},${amountPerPeriodStr},`);
+
   // 1. Send 1 coin as regular transfer
   log(`${i}: Transfer ${amount1StrHuman} to ${recipient} ... `);
   const tx1 = api.tx.balances.transfer(recipient, amount1Str);
   const blockHash1 = await sendTransactionAsync(sender, tx1);
+
+  // Log for audit
+  fs.appendFileSync(csvLogFile, `${blockHash1},`);
 
   // 2. Send the rest as vested transfer
   log(`${i}: Vesting ${amount2StrHuman} to ${recipient} ... `);
@@ -129,8 +140,7 @@ async function sendVestedFunds(i, api, sender, recipient, amount, lock, vest) {
   const blockHash2 = await sendTransactionAsync(sender, tx2);
 
   // Log for audit records
-  const recipientKusama = keyring.encodeAddress(keyring.decodeAddress(recipient), 2);
-  fs.appendFileSync(csvLogFile, `${recipientKusama},${recipient},${amount},${amount1StrHuman},${relay_block_tge},${lock},${vest},${amountPerPeriodStr},${blockHash1},${blockHash2}\n`);
+  fs.appendFileSync(csvLogFile, `${blockHash2}\n`);
 }
 
 async function main() {
@@ -143,18 +153,26 @@ async function main() {
 
   const addrs = JSON.parse(fs.readFileSync(airdrop_file));
   
-  log(`===========================================================\n`);
-  log(`------- START\n`);
-  log(`Number of addresses: ${addrs.length}\n`);
-  log(`Sender Address: ${sender.address}\n`);
-  log(`Test mode: ${TEST}\n`);
-  log(`Network: ${config.wsEndpoint}\n`);
-  fs.appendFileSync(csvLogFile, `KSM Address,QTZ Address,QTZ Total Amount,Transferrable Amount,TGE Block,Lock blocks,Vesting Blocks,Amount per block,Transfer tx hash,Vesting tx hash\n`);
+  console.log(`===========================================================`);
+  console.log(`------- START`);
+  console.log(`Number of addresses: ${addrs.length}`);
+  console.log(`Sender Address: ${sender.address}`);
+  console.log(`Test mode: ${TEST}`);
+  console.log(`Network: ${config.wsEndpoint}`);
 
   const balance = new BigNumber((await api.query.system.account(sender.address)).data.free);
-  log(`Sender initial balance: ${balance.div(decimals).toString()}\n`);
+  console.log(`Sender initial balance: ${balance.div(decimals).toString()}`);
 
-  for (let i=1; i<=addrs.length; i++) {
+  let d = 30;
+  while (d>0) {
+    process.stdout.write(`WARNING: Will start with address ${startAddress} in ${d} seconds ...            \r`);
+    await delay(1000);
+    d--;
+  }
+  console.log("                                                                                             ");
+
+  for (let i=startAddress; i<=addrs.length; i++) {
+    if (i == 1) fs.appendFileSync(csvLogFile, `KSM Address,QTZ Address,QTZ Total Amount,Transferrable Amount,TGE Block,Lock blocks,Vesting Blocks,Amount per block,Transfer tx hash,Vesting tx hash\n`);
     try {
       const recipient = keyring.encodeAddress(keyring.decodeAddress(addrs[i-1].recipient), 255);
       const amount = addrs[i-1].amount;
@@ -164,8 +182,20 @@ async function main() {
     }
     catch (e) {
       log('Error: ' + e.toString() + '\n');
+      process.exit();
     }
+
+    // Graceful interruption
+    try {
+      const { stop } = JSON.parse(fs.readFileSync("./stop.json"));
+      if (stop) break;
+    } catch (e) {}
   }
 }
 
 main().catch(console.error).finally(() => process.exit());
+
+// const blockNumber = 100000;
+// const blockHash = await api.rpc.chain.getBlockHash(blockNumber);
+// const signedBlock = await api.rpc.chain.getBlock(blockHash);
+// console.log(`Block ${blockNumber} hash: ${signedBlock.block.header.hash.toHex()}`);

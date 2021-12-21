@@ -17,6 +17,7 @@
     "@polkadot/api": "6.11.1",
     "@unique-nft/types": "0.2.0",
     "bignumber.js": "^9.0.0",
+    "delay": "^5.0.0",
     "fs": "0.0.1-security"
   },
   "standard": {
