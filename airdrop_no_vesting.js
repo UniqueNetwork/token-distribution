@@ -7,8 +7,8 @@ BigNumber.config({ DECIMAL_PLACES: 18, ROUNDING_MODE: BigNumber.ROUND_DOWN, deci
 
 const TEST = false;
 const seed = config.seed;
-const logFile = "./2022-02-03/qtz_send_log.txt";
-const csvLogFile = "./2022-02-03/qtz_send_log.csv";
+const logFile = "./2022-02-07/qtz_send_log.txt";
+const csvLogFile = "./2022-02-07/qtz_send_log.csv";
 const decimals = new BigNumber(1e18);
 let keyring;
 const startAddress = 1; // address list begins with 1
@@ -18,10 +18,10 @@ const startAddress = 1; // address list begins with 1
 let airdrop_file;
 let relay_block_tge = 0;
 if (TEST) {
-  airdrop_file = './2021-12/qtz_crowdloan_test.json';
+  airdrop_file = './2022-02-09/qtz.json';
   relay_block_tge = 14250;
 } else {
-  airdrop_file = './2022-02-03/qtz.json';
+  airdrop_file = './2022-02-09/qtz.json';
   relay_block_tge = 10457457;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,11 +68,11 @@ function getTransactionStatus(events, status) {
 }
 
 function sendTransactionAsync(sender, transaction) {
-  // if (TEST) {
-  //   log(`OK\n`);
-  //   return;
-  // }
-  // else {
+  if (TEST) {
+    log(`OK\n`);
+    return;
+  }
+  else {
     return new Promise(async (resolve, reject) => {
       try {
         // 10 blocks with no result => timeout and keep going
@@ -108,39 +108,24 @@ function sendTransactionAsync(sender, transaction) {
         resolve(null);
       }
     });
-  // }
+  }
 }
 
-async function sendVestedFunds(i, api, sender, recipient, amount, lock, vest) {
-  const amount1StrHuman = (new BigNumber(1)).toFixed();
-  const amount1Str = (new BigNumber(1)).times(decimals).toString();
-  const amount2StrHuman = (new BigNumber(amount-1)).toFixed();
-  const amountPerPeriodStr = (new BigNumber(amount-1)).times(decimals).div(vest).integerValue().toString();
+async function sendFunds(i, api, sender, recipient, amount) {
+  const amount2Str = (new BigNumber(amount)).times(decimals).toFixed();
+  const amount2StrHuman = (new BigNumber(amount)).toFixed();
 
   // Log for audit records
   const recipientKusama = keyring.encodeAddress(keyring.decodeAddress(recipient), 2);
-  fs.appendFileSync(csvLogFile, `${recipientKusama},${recipient},${amount},${amount1StrHuman},${relay_block_tge},${lock},${vest},${amountPerPeriodStr},`);
+  fs.appendFileSync(csvLogFile, `${recipientKusama},${recipient},${amount},${amount2StrHuman},${relay_block_tge},0,0,0,`);
 
-  // 1. Send 1 coin as regular transfer
-  log(`${i}: Transfer ${amount1StrHuman} to ${recipient} ... `);
-  const tx1 = api.tx.balances.transfer(recipient, amount1Str);
+  // Send as a regular transfer
+  log(`${i}: Transfer ${amount2StrHuman} to ${recipient} ... `);
+  const tx1 = api.tx.balances.transfer(recipient, amount2Str);
   const blockHash1 = await sendTransactionAsync(sender, tx1);
 
   // Log for audit
-  fs.appendFileSync(csvLogFile, `${blockHash1},`);
-
-  // 2. Send the rest as vested transfer
-  log(`${i}: Vesting ${amount2StrHuman} to ${recipient} ... `);
-  const tx2 = api.tx.vesting.vestedTransfer(recipient, {
-    start: relay_block_tge + lock,
-    period: 1,
-    periodCount: vest,
-    perPeriod: amountPerPeriodStr
-  });
-  const blockHash2 = await sendTransactionAsync(sender, tx2);
-
-  // Log for audit records
-  fs.appendFileSync(csvLogFile, `${blockHash2}\n`);
+  fs.appendFileSync(csvLogFile, `${blockHash1},\n`);
 }
 
 async function main() {
@@ -163,22 +148,22 @@ async function main() {
   const balance = new BigNumber((await api.query.system.account(sender.address)).data.free);
   console.log(`Sender initial balance: ${balance.div(decimals).toString()}`);
 
-  let d = 30;
-  while (d>0) {
-    process.stdout.write(`WARNING: Will start with address ${startAddress} in ${d} seconds ...            \r`);
-    await delay(1000);
-    d--;
+  if (!TEST) {
+    let d = 30;
+    while (d>0) {
+      process.stdout.write(`WARNING: Will start with address ${startAddress} in ${d} seconds ...            \r`);
+      await delay(1000);
+      d--;
+    }
+    console.log("                                                                                             ");
   }
-  console.log("                                                                                             ");
 
   for (let i=startAddress; i<=addrs.length; i++) {
     if (i == 1) fs.appendFileSync(csvLogFile, `KSM Address,QTZ Address,QTZ Total Amount,Transferrable Amount,TGE Block,Lock blocks,Vesting Blocks,Amount per block,Transfer tx hash,Vesting tx hash\n`);
     try {
       const recipient = keyring.encodeAddress(keyring.decodeAddress(addrs[i-1].recipient), 255);
       const amount = addrs[i-1].amount;
-      const lock = addrs[i-1].lockBlocks;
-      const vest = addrs[i-1].vestingBlocks;
-      await sendVestedFunds(i, api, sender, recipient, amount, lock, vest);
+      await sendFunds(i, api, sender, recipient, amount);
     }
     catch (e) {
       log('Error: ' + e.toString() + '\n');
