@@ -7,11 +7,13 @@ BigNumber.config({ DECIMAL_PLACES: 18, ROUNDING_MODE: BigNumber.ROUND_DOWN, deci
 
 const TEST = false;
 const seed = config.seed;
-const logFile = "./2022-12-12/qtz_send_log.txt";
-const csvLogFile = "./2022-12-12/qtz_send_log.csv";
+const logFile = "./2023/qtz_send_log.txt";
+const csvLogFile = "./2023/qtz_send_log.csv";
 const decimals = new BigNumber(1e18);
 let keyring;
-const startAddress = 1; // address list begins with 1
+let startAddress = 1; // address list begins with 1
+
+let state = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Management audit
@@ -21,7 +23,7 @@ if (TEST) {
   airdrop_file = './2022-12/qtz_crowdloan_test.json';
   relay_block_tge = 14250;
 } else {
-  airdrop_file = './2022-12-12/qtz-team-h2-1.json';
+  airdrop_file = './2023/qtz-team.json';
   relay_block_tge = 10457457;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +145,25 @@ async function sendVestedFunds(i, api, sender, recipient, amount, lock, vest) {
   fs.appendFileSync(csvLogFile, `${blockHash2}\n`);
 }
 
+function saveState() {
+  fs.writeFileSync("./state.json", JSON.stringify(state));
+}
+
+function loadState() {
+  try {
+    state = JSON.parse(fs.readFileSync("./state.json"));
+  } catch (e) {
+    if (!e.toString().includes('no such file')) throw e;
+  }
+  if (state[airdrop_file] == undefined) {
+    state[airdrop_file] = 1;
+    startAddress = 1;
+  }
+  else {
+    startAddress = state[airdrop_file];
+  }
+}
+
 async function main() {
 
   const api = await connect();
@@ -152,6 +173,7 @@ async function main() {
   const sender = keyring.addFromUri(seed);
 
   const addrs = JSON.parse(fs.readFileSync(airdrop_file));
+  loadState();
 
   console.log(`===========================================================`);
   console.log(`------- START`);
@@ -166,18 +188,23 @@ async function main() {
     total += addrs[i-1].amount;
   }
   console.log(`Total to be distributed: ${total}`);
-
+  console.log(`Starting with recipient #: ${startAddress}`);
 
   const balance = new BigNumber((await api.query.system.account(sender.address)).data.free);
   console.log(`Sender initial balance: ${balance.div(decimals).toString()}`);
 
-  let d = 30;
-  while (d>0) {
-    process.stdout.write(`WARNING: Will start with address ${startAddress} (${addrs[startAddress-1].recipient}) in ${d} seconds ...            \r`);
-    await delay(1000);
-    d--;
+  if (startAddress <= addrs.length) {
+    let d = 30;
+    while (d>0) {
+      process.stdout.write(`WARNING: Will start with address ${startAddress} (${addrs[startAddress-1].recipient}) in ${d} seconds ...            \r`);
+      await delay(1000);
+      d--;
+    }
+    console.log("                                                                                                                                  ");
   }
-  console.log("                                                                                             ");
+  else {
+    console.log("Nothing to distribute");
+  }
 
   for (let i=startAddress; i<=addrs.length; i++) {
     if (i == 1) fs.appendFileSync(csvLogFile, `KSM Address,QTZ Address,QTZ Total Amount,Transferrable Amount,TGE Block,Lock blocks,Vesting Blocks,Amount per block,Transfer tx hash,Vesting tx hash\n`);
@@ -192,6 +219,9 @@ async function main() {
       log('Error: ' + e.toString() + '\n');
       process.exit();
     }
+
+    state[airdrop_file] = i+1;
+    saveState();
 
     // Graceful interruption
     try {
