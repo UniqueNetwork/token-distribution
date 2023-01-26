@@ -145,6 +145,23 @@ async function sendVestedFunds(i, api, sender, recipient, amount, lock, vest) {
   fs.appendFileSync(csvLogFile, `${blockHash2}\n`);
 }
 
+async function sendFunds(i, api, sender, recipient, amount) {
+  const amount2Str = (new BigNumber(amount)).times(decimals).toFixed();
+  const amount2StrHuman = (new BigNumber(amount)).toFixed();
+
+  // Log for audit records
+  const recipientKusama = keyring.encodeAddress(keyring.decodeAddress(recipient), 2);
+  fs.appendFileSync(csvLogFile, `${recipientKusama},${recipient},${amount},${amount2StrHuman},${relay_block_tge},0,0,0,`);
+
+  // Send as a regular transfer
+  log(`${i}: Transfer ${amount2StrHuman} to ${recipient} ... `);
+  const tx1 = api.tx.balances.transfer(recipient, amount2Str);
+  const blockHash1 = await sendTransactionAsync(sender, tx1);
+
+  // Log for audit
+  fs.appendFileSync(csvLogFile, `${blockHash1},\n`);
+}
+
 function saveState() {
   fs.writeFileSync("./state.json", JSON.stringify(state));
 }
@@ -213,7 +230,12 @@ async function main() {
       const amount = addrs[i-1].amount;
       const lock = addrs[i-1].lockBlocks;
       const vest = addrs[i-1].vestingBlocks;
-      await sendVestedFunds(i, api, sender, recipient, amount, lock, vest);
+      if ((lock > 0) || (vest > 0)) {
+        await sendVestedFunds(i, api, sender, recipient, amount, lock, vest);
+      }
+      else {
+        await sendFunds(i, api, sender, recipient, amount);
+      }
     }
     catch (e) {
       log('Error: ' + e.toString() + '\n');
