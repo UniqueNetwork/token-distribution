@@ -4,5 +4,9 @@
 { "recipient": "5E2PKyRWNARt3YQ4maEUys2pZdZst61usvTCcsHBKGxyHpua", "amount": 144667, "lockBlocks":0, "vestingBlocks":0 },
 { "recipient": "yGHrgog4R4pD4cV6PcTo4Fwx6LvEqW4V8n1mrJubmZDcafdET", "amount": 232000, "lockBlocks":0, "vestingBlocks":0 },
 { "recipient": "yGHrgog4R4pD4cV6PcTo4Fwx6LvEqW4V8n1mrJubmZDcafdET", "amount": 180000, "lockBlocks":5688080, "vestingBlocks":2592000 },
-{ "recipient": "unj5xcrcVzwiKW6oUigHe1MrspqUcnZB66kemyKs7C6j2hab6", "amount": 8000, "lockBlocks":0, "vestingBlocks":0 }
+{ "recipient": "unj5xcrcVzwiKW6oUigHe1MrspqUcnZB66kemyKs7C6j2hab6", "amount": 8000, "lockBlocks":0, "vestingBlocks":0 },
+{ "recipient": "16DD7PMHYib5Yeuno1V7Nhnm6HVW1iQgGSJnMwTFpM9M89BU", "amount": 10000000, "lockBlocks":2592000, "vestingBlocks":12960000 },
+{ "recipient": "15Sg6ZaB45B7h8ZvdifGshTnMKnWjJBkRFr3LW6W15bH9ZsK", "amount": 10000000, "lockBlocks":2592000, "vestingBlocks":12960000 },
+{ "recipient": "16cLHewKc4dUhsuaz6EHPC3r5djqzmmJz75ejW8MVZVYYtfa", "amount": 10000000, "lockBlocks":2592000, "vestingBlocks":12960000 },
+{ "recipient": "16MaqCdiVvExFZKKqponXubbCEZgpnC9o7iG9kmyGYt56jBC", "amount": 10000000, "lockBlocks":2592000, "vestingBlocks":12960000 }
 ]
