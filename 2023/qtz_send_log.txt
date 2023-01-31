@@ -15,3 +15,5 @@
 9: Vesting 9999999 to yGJLqm5zrd1ZkZaJi1zb4byaxaQSSvSHXy2hbJko645kNXWPK ... OK in block 0x9895c5f6e3dc3d8832e31ecc0d9e3b9dfd15904db8608c26cb294fcbd57368b4
 10: Transfer 1 to yGJ66JdhFWsBE7FiSsjAZkh8hh1GHkSiNn3LCj1Shq58u5Gua ... OK in block 0x61522c63acd32a361eec4c8c260c0c9aeb33db28b951a34a91c22efe39f5cf30
 10: Vesting 9999999 to yGJ66JdhFWsBE7FiSsjAZkh8hh1GHkSiNn3LCj1Shq58u5Gua ... OK in block 0x103951a58a72c9775060c73b5d15c58e33e508f1e07cbb223a2894f32ac5e652
+11: Transfer 118800 to yGDRdyKPLudSprAQgeCfeWLHkyZFD6yyuttoeGgRUeHBQgPod ... OK in block 0xce52fa5a42fed9969e17f0a50545aaed3fd944bbb3ea4f8758e52cc4c32fdec3
+12: Transfer 25000 to yGCk57VLFAfDpsXnMyYqSAJHCDFA9Fj5qz47ttomLrE6oq3c1 ... OK in block 0x13fc7f803589ec3b326bef211777d815d169c8774da880aef73ff15b1f6117a2
