@@ -14,8 +14,8 @@
   "license": "Apache 2.0",
   "homepage": "",
   "dependencies": {
-    "@polkadot/api": "8.8.2",
-    "@unique-nft/quartz-mainnet-types": "0.5.2",
+    "@polkadot/api": "10.9.1",
+    "@unique-nft/quartz-mainnet-types": "942.57.0",
     "bignumber.js": "^9.0.0",
     "delay": "^5.0.0",
     "fs": "0.0.1-security"
